@@ -1,0 +1,1 @@
+An event ingestion pipeline built in Java — reads raw JSON events from a file, transforms them via a gRPC microservice, and persists the results to PostgreSQL. Built across four phases to demonstrate a progression from local Java to a fully containerised, CI-tested system.
