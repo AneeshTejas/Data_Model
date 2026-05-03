@@ -1,0 +1,14 @@
+StreamBridge Schema Report
+Generated: 2026-04-28T19:54:30.682810300
+==================================================
+
+Model: EventType
+  field: String routingKey();
+  field: String type = event.type();
+
+Model: ProcessedEvent
+  field: String id
+  field: String source
+  field: String routingKey            // determines which DB table this goes to
+
+Model: RawEvent

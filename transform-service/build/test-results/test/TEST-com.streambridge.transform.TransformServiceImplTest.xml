@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.streambridge.transform.TransformServiceImplTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-04-28T14:23:51.579Z" hostname="ANEESHX16" time="0.656">
+  <properties/>
+  <testcase name="transform_malformedJsonSetsSuccessFalseWithMessage()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.553"/>
+  <testcase name="coerceNumericStrings_convertsDecimalStringsToDouble()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.004"/>
+  <testcase name="redactPiiFields_replacesKnownPiiWithRedacted()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.001"/>
+  <testcase name="convertCamelToSnake_renamesKeys()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.01"/>
+  <testcase name="transform_blankEventIdCallsOnError()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.008"/>
+  <testcase name="coerceNumericStrings_convertsIntegerStringsToLong()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.002"/>
+  <testcase name="transform_appliesAllStepsAndReturnsSingleResponse()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.017"/>
+  <testcase name="removeNullsAndEmpty_keepsNonEmptyValues()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.002"/>
+  <testcase name="streamTransform_emitsExactlyFourResponses()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.004"/>
+  <testcase name="convertCamelToSnake_leavesSnakeCaseUnchanged()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.001"/>
+  <testcase name="removeNullsAndEmpty_dropsBlankStrings()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.001"/>
+  <testcase name="removeNullsAndEmpty_dropsNullValues()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.001"/>
+  <testcase name="streamTransform_eachResponseHasExactlyOneNote()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.003"/>
+  <testcase name="coerceNumericStrings_leavesNonNumericStringsAlone()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.001"/>
+  <testcase name="redactPiiFields_leavesNonPiiFieldsAlone()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.001"/>
+  <testcase name="streamTransform_finalResponseHasRedactedPii()" classname="com.streambridge.transform.TransformServiceImplTest" time="0.003"/>
+  <system-out><![CDATA[19:53:52.020 | DEBUG | c.s.t.TransformServiceImpl     | transform() called for event_id=evt-bad
+19:53:52.083 | ERROR | c.s.t.TransformServiceImpl     | transform() failed for event_id=evt-bad: Unexpected character ('t' (code 116)): was expecting double-quote to start field name
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]
+19:53:52.204 | DEBUG | c.s.t.TransformServiceImpl     | transform() called for event_id=evt-test
+19:53:52.215 | DEBUG | c.s.t.TransformServiceImpl     | streamTransform() called for event_id=evt-stream
+19:53:52.226 | DEBUG | c.s.t.TransformServiceImpl     | streamTransform() called for event_id=evt-notes
+19:53:52.234 | DEBUG | c.s.t.TransformServiceImpl     | streamTransform() called for event_id=evt-pii
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

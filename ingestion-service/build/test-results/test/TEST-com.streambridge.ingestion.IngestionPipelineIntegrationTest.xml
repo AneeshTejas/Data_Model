@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.streambridge.ingestion.IngestionPipelineIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-29T13:04:03.329Z" hostname="ANEESHX16" time="0.236">
+  <properties/>
+  <testcase name="redactsPIIFromPayload()" classname="com.streambridge.ingestion.IngestionPipelineIntegrationTest" time="0.177"/>
+  <testcase name="filtersOutCancelledOrders()" classname="com.streambridge.ingestion.IngestionPipelineIntegrationTest" time="0.018"/>
+  <testcase name="processesValidEventsAndWritesToDB()" classname="com.streambridge.ingestion.IngestionPipelineIntegrationTest" time="0.021"/>
+  <testcase name="filtersOutUnknownSources()" classname="com.streambridge.ingestion.IngestionPipelineIntegrationTest" time="0.017"/>
+  <system-out><![CDATA[18:34:03.347 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-1 - Starting...
+18:34:03.452 | INFO  | c.z.hikari.pool.HikariPool     | HikariPool-1 - Added connection org.sqlite.jdbc4.JDBC4Connection@2c779e5
+18:34:03.454 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-1 - Start completed.
+18:34:03.469 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite sink initialised at: C:\Users\anees\AppData\Local\Temp\junit9462164725238244273\test.db
+18:34:03.472 | INFO  | c.s.i.p.IngestionPipeline      | Starting pipeline run for: C:\Users\anees\AppData\Local\Temp\junit9462164725238244273\pii.ndjson
+18:34:03.472 | INFO  | c.s.i.parser.EventParser       | Parsing events from file: C:\Users\anees\AppData\Local\Temp\junit9462164725238244273\pii.ndjson
+18:34:03.476 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e1 type=user.created
+18:34:03.477 | DEBUG | c.s.i.util.PayloadCleaner      | Redacting PII field: email
+18:34:03.479 | DEBUG | c.s.i.p.IngestionPipeline      | Event id=e1 routed to: users table (user_id=u-1)
+18:34:03.499 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | Batch wrote 1 events
+18:34:03.500 | INFO  | c.s.i.p.IngestionPipeline      | Pipeline complete: PipelineStats { total=1, passed=1, filtered=0, errors=0, successRate=100.0% }
+18:34:03.503 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-1 - Shutdown initiated...
+18:34:03.505 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-1 - Shutdown completed.
+18:34:03.505 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite connection pool closed
+18:34:03.511 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-2 - Starting...
+18:34:03.513 | INFO  | c.z.hikari.pool.HikariPool     | HikariPool-2 - Added connection org.sqlite.jdbc4.JDBC4Connection@5c92166b
+18:34:03.513 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-2 - Start completed.
+18:34:03.517 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite sink initialised at: C:\Users\anees\AppData\Local\Temp\junit17784487474465960251\test.db
+18:34:03.518 | INFO  | c.s.i.p.IngestionPipeline      | Starting pipeline run for: C:\Users\anees\AppData\Local\Temp\junit17784487474465960251\orders.ndjson
+18:34:03.518 | INFO  | c.s.i.parser.EventParser       | Parsing events from file: C:\Users\anees\AppData\Local\Temp\junit17784487474465960251\orders.ndjson
+18:34:03.521 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e1 type=order.cancelled
+18:34:03.521 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e2 type=order.placed
+18:34:03.521 | DEBUG | c.s.i.p.IngestionPipeline      | Event id=e2 routed to: orders table (order_id=o-2)
+18:34:03.524 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | Batch wrote 1 events
+18:34:03.524 | INFO  | c.s.i.p.IngestionPipeline      | Pipeline complete: PipelineStats { total=2, passed=1, filtered=1, errors=0, successRate=50.0% }
+18:34:03.525 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-2 - Shutdown initiated...
+18:34:03.525 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-2 - Shutdown completed.
+18:34:03.526 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite connection pool closed
+18:34:03.529 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-3 - Starting...
+18:34:03.530 | INFO  | c.z.hikari.pool.HikariPool     | HikariPool-3 - Added connection org.sqlite.jdbc4.JDBC4Connection@56ba8773
+18:34:03.531 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-3 - Start completed.
+18:34:03.534 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite sink initialised at: C:\Users\anees\AppData\Local\Temp\junit6577140002517982000\test.db
+18:34:03.535 | INFO  | c.s.i.p.IngestionPipeline      | Starting pipeline run for: C:\Users\anees\AppData\Local\Temp\junit6577140002517982000\events.ndjson
+18:34:03.536 | INFO  | c.s.i.parser.EventParser       | Parsing events from file: C:\Users\anees\AppData\Local\Temp\junit6577140002517982000\events.ndjson
+18:34:03.538 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e1 type=user.created
+18:34:03.538 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e2 type=order.placed
+18:34:03.538 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e3 type=system.alert
+18:34:03.538 | DEBUG | c.s.i.p.IngestionPipeline      | Event id=e1 routed to: users table (user_id=u-1)
+18:34:03.539 | DEBUG | c.s.i.p.IngestionPipeline      | Event id=e2 routed to: orders table (order_id=o-1)
+18:34:03.539 | DEBUG | c.s.i.p.IngestionPipeline      | Event id=e3 routed to: system_logs table (severity=ERROR)
+18:34:03.544 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | Batch wrote 3 events
+18:34:03.544 | INFO  | c.s.i.p.IngestionPipeline      | Pipeline complete: PipelineStats { total=3, passed=3, filtered=0, errors=0, successRate=100.0% }
+18:34:03.545 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-3 - Shutdown initiated...
+18:34:03.546 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-3 - Shutdown completed.
+18:34:03.546 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite connection pool closed
+18:34:03.550 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-4 - Starting...
+18:34:03.551 | INFO  | c.z.hikari.pool.HikariPool     | HikariPool-4 - Added connection org.sqlite.jdbc4.JDBC4Connection@878537d
+18:34:03.551 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-4 - Start completed.
+18:34:03.554 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite sink initialised at: C:\Users\anees\AppData\Local\Temp\junit4463055761963043436\test.db
+18:34:03.555 | INFO  | c.s.i.p.IngestionPipeline      | Starting pipeline run for: C:\Users\anees\AppData\Local\Temp\junit4463055761963043436\mixed.ndjson
+18:34:03.556 | INFO  | c.s.i.parser.EventParser       | Parsing events from file: C:\Users\anees\AppData\Local\Temp\junit4463055761963043436\mixed.ndjson
+18:34:03.557 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e1 type=user.created
+18:34:03.558 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e2 type=user.created
+18:34:03.558 | DEBUG | c.s.i.filter.EventFilter       | Dropping event id=e1 — source 'unknown_crm' not in allowlist
+18:34:03.558 | DEBUG | c.s.i.p.IngestionPipeline      | Event id=e2 routed to: users table (user_id=u-2)
+18:34:03.562 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | Batch wrote 1 events
+18:34:03.562 | INFO  | c.s.i.p.IngestionPipeline      | Pipeline complete: PipelineStats { total=2, passed=1, filtered=1, errors=0, successRate=50.0% }
+18:34:03.563 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-4 - Shutdown initiated...
+18:34:03.563 | INFO  | c.z.hikari.HikariDataSource    | HikariPool-4 - Shutdown completed.
+18:34:03.564 | INFO  | c.s.i.s.EventSink$SQLiteEventSink | SQLite connection pool closed
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

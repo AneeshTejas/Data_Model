@@ -1,0 +1,204 @@
+version: 2.1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EXECUTORS
+# ─────────────────────────────────────────────────────────────────────────────
+# Reusable execution environments — avoids repeating image + resource_class in
+# every job definition.
+executors:
+
+  # Used by the "test" job.
+  # The second entry in the docker list is a SIDECAR — a container that runs
+  # alongside the primary container on the same private network. It is reachable
+  # at localhost:<port> from the primary container, just like a local process.
+  # This is different from docker-compose where containers talk via service names.
+  jvm:
+    docker:
+      - image: cimg/openjdk:21.0          # primary — runs Gradle
+      - image: cimg/postgres:16.3         # sidecar — available at localhost:5432
+        environment:
+          POSTGRES_DB:       streambridge
+          POSTGRES_USER:     streambridge
+          POSTGRES_PASSWORD: streambridge
+    resource_class: medium
+
+  # Used by the "build-images" and "push-images" jobs.
+  # A plain base image is enough — Docker operations are delegated to the
+  # remote Docker daemon started by setup_remote_docker.
+  docker-builder:
+    docker:
+      - image: cimg/base:stable
+    resource_class: medium
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOBS
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. test ─────────────────────────────────────────────────────────────────
+  # Compile both modules, generate proto stubs, run all JUnit 5 tests.
+  # Publishes test results so CircleCI shows per-test pass/fail in the UI.
+  # Does NOT build Docker images — that is a separate job so test feedback
+  # reaches developers before the (slower) image build begins.
+  test:
+    executor: jvm
+    steps:
+      - checkout
+
+      # Restore Gradle cache keyed on both build file checksums.
+      # A cache hit skips all Maven Central downloads — saves ~60 s on cold runs.
+      # The fallback key (no checksum suffix) is used when build files change;
+      # it restores the nearest previous cache rather than starting from scratch.
+      - restore_cache:
+          keys:
+            - v1-gradle-{{ checksum "transform-service/build.gradle.kts" }}-{{ checksum "ingestion-service/build.gradle.kts" }}
+            - v1-gradle-
+
+      # Pre-warm the dependency cache.
+      # || true: acceptable failure — proto stubs don't exist at this point.
+      - run:
+          name: Resolve dependencies
+          command: >-
+            ./gradlew :transform-service:dependencies :ingestion-service:dependencies
+            --no-daemon 2>&1 || true
+
+      # Proto stub generation — same two-step trick as the Dockerfile.
+      # cimg/openjdk:21.0 is Ubuntu (glibc) so the protoc native binary runs fine.
+      # Step 1: download protoc binaries (task will fail — that's expected).
+      # Step 2: chmod the downloaded .exe files.
+      # Step 3: re-run generateProto now that protoc is executable.
+      - run:
+          name: Generate proto stubs
+          command: |
+            ./gradlew :transform-service:generateProto --no-daemon 2>&1 || true
+            find ~/.gradle -name "*.exe" -exec chmod +x {} \; 2>/dev/null || true
+            ./gradlew :transform-service:generateProto --no-daemon
+
+      - run:
+          name: Compile and test
+          command: ./gradlew :transform-service:test :ingestion-service:test --no-daemon
+
+      # Save AFTER the build so proto-compiler binaries are included in the cache.
+      - save_cache:
+          key: v1-gradle-{{ checksum "transform-service/build.gradle.kts" }}-{{ checksum "ingestion-service/build.gradle.kts" }}
+          paths:
+            - ~/.gradle/caches
+            - ~/.gradle/wrapper
+
+      # Publish JUnit XML so CircleCI surfaces per-test results in the Tests tab.
+      - store_test_results:
+          path: transform-service/build/test-results
+      - store_test_results:
+          path: ingestion-service/build/test-results
+
+  # ── 2. build-images ──────────────────────────────────────────────────────────
+  # Build both Docker images and verify they exist.
+  # docker_layer_caching reuses unchanged layers across CI runs for faster builds.
+  #
+  # WHY setup_remote_docker instead of a Docker-in-Docker (dind) sidecar?
+  # CircleCI spins a SEPARATE Docker daemon and exposes its socket to this job.
+  # This approach:
+  #   • Does not require --privileged containers (safer)
+  #   • Supports docker_layer_caching (dind does not)
+  #   • Produces real images that can be tested and pushed downstream
+  build-images:
+    executor: docker-builder
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      # Build with the Gradle path (default BUILD_TOOL=gradle).
+      # Tag with both the immutable SHA and the mutable "latest" alias.
+      - run:
+          name: Build transform-service image
+          command: |
+            docker build \
+              --build-arg BUILD_TOOL=gradle \
+              -f transform-service/Dockerfile \
+              -t streambridge/transform-service:${CIRCLE_SHA1} \
+              -t streambridge/transform-service:latest \
+              .
+
+      - run:
+          name: Build ingestion-service image
+          command: |
+            docker build \
+              -f ingestion-service/Dockerfile \
+              -t streambridge/ingestion-service:${CIRCLE_SHA1} \
+              -t streambridge/ingestion-service:latest \
+              .
+
+      # Sanity check — fail fast if the build silently produced no image.
+      - run:
+          name: Verify images exist
+          command: |
+            docker images streambridge/transform-service:${CIRCLE_SHA1}
+            docker images streambridge/ingestion-service:${CIRCLE_SHA1}
+
+  # ── 3. push-images ───────────────────────────────────────────────────────────
+  # Push both images to Docker Hub.
+  #
+  # GATED by the workflow filter below — only runs on commits to main.
+  # Feature branches get test + build-images (fast feedback) but never push.
+  #
+  # Credentials come from CircleCI project environment variables:
+  #   DOCKER_USERNAME — Docker Hub username
+  #   DOCKER_PASSWORD — Docker Hub access token (see .circleci/README.md)
+  push-images:
+    executor: docker-builder
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      # Use --password-stdin to avoid the password appearing in process listings.
+      - run:
+          name: Log in to Docker Hub
+          command: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+      # Build then immediately push transform-service.
+      # We rebuild here rather than saving images between jobs because CircleCI
+      # remote Docker daemons are not shared across jobs; layer caching makes the
+      # rebuild fast on the same pipeline run.
+      - run:
+          name: Build and push transform-service
+          command: |
+            docker build \
+              --build-arg BUILD_TOOL=gradle \
+              -f transform-service/Dockerfile \
+              -t ${DOCKER_USERNAME}/transform-service:${CIRCLE_SHA1} \
+              -t ${DOCKER_USERNAME}/transform-service:latest \
+              .
+            docker push ${DOCKER_USERNAME}/transform-service:${CIRCLE_SHA1}
+            docker push ${DOCKER_USERNAME}/transform-service:latest
+
+      - run:
+          name: Build and push ingestion-service
+          command: |
+            docker build \
+              -f ingestion-service/Dockerfile \
+              -t ${DOCKER_USERNAME}/ingestion-service:${CIRCLE_SHA1} \
+              -t ${DOCKER_USERNAME}/ingestion-service:latest \
+              .
+            docker push ${DOCKER_USERNAME}/ingestion-service:${CIRCLE_SHA1}
+            docker push ${DOCKER_USERNAME}/ingestion-service:latest
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WORKFLOW
+# ─────────────────────────────────────────────────────────────────────────────
+# Every push → test + build-images (fast feedback on all branches).
+# main only   → additionally runs push-images (controlled release gate).
+workflows:
+  pipeline:
+    jobs:
+      - test
+      - build-images:
+          requires:
+            - test
+      - push-images:
+          requires:
+            - build-images
+          filters:
+            branches:
+              only: main

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  transform-service/pom.xml — Maven build for the gRPC transform service.
+
+  WHY BOTH pom.xml AND build.gradle.kts?
+  Teams migrate between build tools incrementally — you rarely flip everything
+  overnight. Having both lets:
+    • CI validate both tools produce the same test results (prove parity)
+    • Individual contributors keep using whichever tool they know
+    • Docker builds switch via BUILD_TOOL=maven|gradle build arg
+  The rule: both files must always produce a passing build and identical tests.
+
+  MAVEN LIFECYCLE vs GRADLE TASK GRAPH:
+  Maven has a FIXED sequence of phases every project goes through:
+    validate → compile → test → package → verify → install → deploy
+  You can't reorder them. Every plugin hooks into a phase.
+
+  Gradle has a FLEXIBLE DIRECTED ACYCLIC GRAPH (DAG) of tasks. You define
+  what depends on what; tasks run in dependency order, not a fixed sequence.
+
+  Neither is better — Maven's predictability is a feature in large orgs;
+  Gradle's flexibility is a feature for complex multi-module builds.
+  Knowing both makes you hireable at companies that use either.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.streambridge</groupId>
+    <artifactId>transform-service</artifactId>
+    <version>0.1.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <grpc.version>1.65.0</grpc.version>
+        <protobuf.version>3.25.3</protobuf.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- ── gRPC trifecta ─────────────────────────────────────────────── -->
+        <!-- scope "compile" (default) = needed to compile AND bundled in output.
+             Maven's equivalent of Gradle's "implementation" configuration.     -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+
+        <!-- ── Payload parsing ───────────────────────────────────────────── -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.17.0</version>
+        </dependency>
+
+        <!-- ── Logging ───────────────────────────────────────────────────── -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.13</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.6</version>
+        </dependency>
+
+        <!-- ── javax.annotation: PROVIDED scope ──────────────────────────────
+             "provided" = available at compile time AND test compile time, but
+             NOT bundled in the final JAR or fat JAR.
+
+             WHY: The generated gRPC stubs have @javax.annotation.Generated.
+             This annotation was removed from the JDK module path in Java 9+.
+             We need it to compile, but at runtime the JRE in our Docker image
+             provides the JVM — it doesn't provide this annotation.
+
+             Maven's "provided" is equivalent to:
+               Gradle:  compileOnly / testCompileOnly
+               Python:  extras_require — a dep needed to build but not to run
+        -->
+        <dependency>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+            <version>1.3.2</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ── Test dependencies ─────────────────────────────────────────── -->
+        <!-- scope "test" = only on test classpath, never bundled -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.25.3</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <extensions>
+            <!--
+              os-maven-plugin: a build extension (not a regular plugin) that runs
+              before any plugin and detects the current OS + CPU architecture.
+              It exposes ${os.detected.classifier} = "linux-x86_64", "osx-x86_64",
+              "windows-x86_64", etc.
+
+              WHY NEEDED: protoc and protoc-gen-grpc-java are native binaries.
+              Maven must download the right binary for the OS doing the build.
+              Gradle solves this with System.getProperty("os.name") in Kotlin DSL;
+              Maven needs this extension because POM is declarative XML — no code.
+            -->
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.1</version>
+            </extension>
+        </extensions>
+
+        <plugins>
+
+            <!-- ── Java compiler ─────────────────────────────────────────── -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <!-- Enable pattern matching, records, sealed classes (Java 21 LTS) -->
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                    <enablePreview>false</enablePreview>
+                </configuration>
+            </plugin>
+
+            <!--
+              ── protobuf-maven-plugin ───────────────────────────────────────
+              Maven's equivalent of Gradle's protobuf {} plugin block.
+
+              GRADLE approach (task graph):
+                generateProto task → runs protoc → produces stubs
+                compileJava task depends on generateProto
+
+              MAVEN approach (lifecycle phase):
+                Plugin binds to "generate-sources" phase.
+                Maven's fixed lifecycle guarantees generate-sources runs
+                BEFORE compile. protoc runs there; stubs are added to
+                the main source set automatically.
+
+              The output goes to:
+                target/generated-sources/protobuf/java/       ← message classes
+                target/generated-sources/protobuf/grpc-java/  ← service stubs
+              Both directories are added to the compile classpath automatically.
+            -->
+            <plugin>
+                <groupId>org.xolstice.util</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <!-- os.detected.classifier set by os-maven-plugin extension -->
+                    <protocArtifact>
+                        com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
+                    </protocArtifact>
+                    <pluginId>grpc-java</pluginId>
+                    <pluginArtifact>
+                        io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
+                    </pluginArtifact>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <!-- compile: generates protobuf message classes -->
+                            <goal>compile</goal>
+                            <!-- compile-custom: generates gRPC service stub classes -->
+                            <goal>compile-custom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+              ── maven-shade-plugin ──────────────────────────────────────────
+              Creates a fat JAR (all dependencies bundled) during the "package"
+              phase. Maven's equivalent of Gradle's shadowJar task.
+
+              With shadedArtifactAttached=true and shadedClassifierName=shaded:
+                mvn package produces TWO artifacts:
+                  target/transform-service-0.1.0.jar         ← thin JAR (compile only)
+                  target/transform-service-0.1.0-shaded.jar  ← fat JAR (ships to Docker)
+
+              WHY ServicesResourceTransformer:
+              gRPC uses Java ServiceLoader (META-INF/services/) to find its Netty
+              transport. Multiple JARs each have their own services file.
+              Without this transformer, only one survives shading and gRPC fails
+              at runtime: "No functional channel service provider found".
+              This transformer merges all services files — same as Gradle's
+              shadowJar { mergeServiceFiles() }.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.2</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>shaded</shadedClassifierName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.streambridge.transform.TransformServer</mainClass>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <!-- Exclude signature files — they break fat JARs -->
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+              ── maven-surefire-plugin ───────────────────────────────────────
+              Runs JUnit 5 tests during the "test" phase.
+              Maven's equivalent of Gradle's useJUnitPlatform() configuration.
+              Version 3.x has built-in JUnit Platform support — no extra
+              junit-platform-launcher dependency required.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

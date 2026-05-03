@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.streambridge.ingestion.EventTypeTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-04-29T13:04:03.263Z" hostname="ANEESHX16" time="0.062">
+  <properties/>
+  <testcase name="userEventExtractsUserId()" classname="com.streambridge.ingestion.EventTypeTest" time="0.003"/>
+  <testcase name="unknownEventTypePreservesRawType()" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <testcase name="type='user.created' → routingKey='users'" classname="com.streambridge.ingestion.EventTypeTest" time="0.012"/>
+  <testcase name="type='user.deleted' → routingKey='users'" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <testcase name="type='order.placed' → routingKey='orders'" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <testcase name="type='order.cancelled' → routingKey='orders'" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <testcase name="type='system.alert' → routingKey='system_logs'" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <testcase name="type='some.unknown' → routingKey='unknown_events'" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <testcase name="orderEventExtractsStatus()" classname="com.streambridge.ingestion.EventTypeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

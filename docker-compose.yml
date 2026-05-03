@@ -1,0 +1,127 @@
+# StreamBridge — docker-compose.yml
+#
+# One command starts the full stack: docker compose up --build
+#
+# Services:
+#   postgres          — event store (persistent, long-running)
+#   adminer           — browser-based DB UI on http://localhost:8080
+#   transform-service — gRPC server on port 50051 (long-running)
+#   ingestion-service — one-shot pipeline job (runs once, then exits)
+
+networks:
+  # Custom bridge network: Docker's embedded DNS resolves service names to
+  # container IPs automatically. So ingestion-service connects to the gRPC
+  # server at host "transform-service" — NOT "localhost".
+  #
+  # WHY NOT localhost:
+  # Each container has its own network namespace. "localhost" inside the
+  # ingestion-service container is THAT container's loopback, not the
+  # transform-service container. Service names work because Docker registers
+  # them in the custom network's DNS resolver.
+  streambridge-net:
+    driver: bridge
+
+volumes:
+  # Named volume: persists PostgreSQL data across container restarts and
+  # 'docker compose down' (without -v). Container filesystems are ephemeral —
+  # the moment you remove a container its writes are gone. Named volumes live
+  # outside the container lifecycle and are managed by Docker.
+  postgres_data:
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB:       streambridge
+      POSTGRES_USER:     streambridge
+      POSTGRES_PASSWORD: streambridge
+    volumes:
+      # Persist data between restarts
+      - postgres_data:/var/lib/postgresql/data
+      # Init scripts: Postgres runs all *.sql files in this directory on FIRST
+      # startup (empty data dir). Our script creates the processed_events table.
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      # pg_isready checks that Postgres is accepting connections.
+      # WHY NOT just depends_on without condition:
+      # depends_on alone only waits for the container to START, not for Postgres
+      # to finish initialising (which takes ~2-3 seconds). Without a health check,
+      # ingestion-service would try to connect to Postgres before it's ready and fail.
+      test: ["CMD", "pg_isready", "-U", "streambridge", "-d", "streambridge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - streambridge-net
+    restart: unless-stopped
+
+  # ── Adminer — lightweight browser DB UI ────────────────────────────────────
+  # Adminer is a single-file PHP web app that lets you browse database tables,
+  # run SQL queries, and inspect schema — like pgAdmin but ~500 KB instead of 500 MB.
+  # Open http://localhost:8080 in your browser to use it.
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - streambridge-net
+    restart: unless-stopped
+
+  # ── TransformService — gRPC server ─────────────────────────────────────────
+  transform-service:
+    build:
+      # Build context is the project ROOT so the Dockerfile can COPY both
+      # modules (ingestion-service + transform-service) into the builder stage.
+      context: .
+      dockerfile: transform-service/Dockerfile
+    ports:
+      # Expose 50051 to the host for local testing / grpcurl calls.
+      # Inside the Docker network, ingestion-service reaches it on port 50051
+      # using the hostname "transform-service" — no port mapping needed there.
+      - "50051:50051"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - streambridge-net
+    restart: on-failure
+
+  # ── IngestionService — one-shot pipeline ───────────────────────────────────
+  # This container runs the pipeline once and exits with code 0 (success) or 1 (failure).
+  # restart: "no" — Docker will not restart it after it exits.
+  # Use 'docker compose run --rm ingestion-service' to trigger it manually.
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: ingestion-service/Dockerfile
+    depends_on:
+      postgres:
+        # condition: service_healthy means Docker waits until the health check
+        # above passes before starting this container. "Up" is not enough.
+        condition: service_healthy
+      transform-service:
+        condition: service_healthy
+    environment:
+      # DB config: point at the postgres service.
+      # Docker resolves "postgres" to the postgres container's IP on streambridge-net.
+      DB_TYPE:     postgres
+      DB_HOST:     postgres
+      DB_PORT:     "5432"
+      DB_NAME:     streambridge
+      DB_USER:     streambridge
+      DB_PASSWORD: streambridge
+      # gRPC config: "transform-service" resolves via Docker DNS — NOT "localhost"
+      TRANSFORM_HOST: transform-service
+      TRANSFORM_PORT: "50051"
+      USE_GRPC:       "true"
+    networks:
+      - streambridge-net
+    restart: "no"

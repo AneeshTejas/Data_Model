@@ -1,0 +1,37 @@
+# .dockerignore — controls what is EXCLUDED from the Docker build context.
+#
+# WHY THIS MATTERS FOR BUILD SPEED:
+# When you run 'docker build' or 'docker compose up --build', Docker first
+# packages everything in the build context directory (.) and sends it to the
+# Docker daemon. Without this file that includes:
+#   .gradle/   — Gradle caches  (~200 MB)
+#   build/     — compiled outputs (~300 MB of JARs and class files)
+#   .git/      — git history     (~50 MB)
+#   *.db       — local SQLite databases
+#
+# With .dockerignore these are excluded BEFORE the context is sent.
+# Result: context goes from ~600 MB → ~5 MB, and Docker skips invalidating
+# cached layers that have nothing to do with source changes.
+
+# Gradle build outputs — rebuilt inside the builder container
+**/build/
+**/.gradle/
+
+# Compiled Java class files
+**/*.class
+
+# Local databases created during Phase 1 / Phase 2 runs
+*.db
+
+# Git history — not needed to build or run the application
+.git/
+.gitignore
+
+# IDE project files
+.idea/
+*.iml
+**/.vscode/
+
+# OS-generated files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.streambridge.ingestion.EventParserTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-04-29T13:04:02.862Z" hostname="ANEESHX16" time="0.399">
+  <properties/>
+  <testcase name="returns empty Optional for blank input" classname="com.streambridge.ingestion.EventParserTest" time="0.283"/>
+  <testcase name="RawEvent record throws on null id" classname="com.streambridge.ingestion.EventParserTest" time="0.004"/>
+  <testcase name="returns empty Optional for malformed JSON" classname="com.streambridge.ingestion.EventParserTest" time="0.065"/>
+  <testcase name="parses multiple lines, skips failures" classname="com.streambridge.ingestion.EventParserTest" time="0.014"/>
+  <testcase name="parsed timestamp falls back to now for invalid format" classname="com.streambridge.ingestion.EventParserTest" time="0.007"/>
+  <testcase name="parses a valid JSON event line correctly" classname="com.streambridge.ingestion.EventParserTest" time="0.008"/>
+  <system-out><![CDATA[18:34:02,899 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.6
+18:34:02,899 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - No custom configurators were discovered as a service.
+18:34:02,900 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+18:34:02,900 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+18:34:02,901 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+18:34:02,901 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+18:34:02,904 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 1 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+18:34:02,904 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+18:34:02,904 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+18:34:02,904 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.xml]
+18:34:02,905 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Found resource [logback.xml] at [file:/D:/JAVA_prep/streambridge-phase1/streambridge/ingestion-service/build/resources/main/logback.xml]
+18:34:02,906 |-WARN in ch.qos.logback.classic.util.DefaultJoranConfigurator@60975100 - Resource [logback.xml] occurs multiple times on the classpath.
+18:34:02,906 |-WARN in ch.qos.logback.classic.util.DefaultJoranConfigurator@60975100 - Resource [logback.xml] occurs at [jar:file:/D:/JAVA_prep/streambridge-phase1/streambridge/transform-service/build/libs/transform-service-0.1.0.jar!/logback.xml]
+18:34:02,906 |-WARN in ch.qos.logback.classic.util.DefaultJoranConfigurator@60975100 - Resource [logback.xml] occurs at [file:/D:/JAVA_prep/streambridge-phase1/streambridge/ingestion-service/build/resources/main/logback.xml]
+18:34:02,978 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONSOLE]
+18:34:02,978 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+18:34:02,985 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+18:34:03,004 |-INFO in ch.qos.logback.classic.model.processor.RootLoggerModelHandler - Setting level of ROOT logger to INFO
+18:34:03,004 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[ROOT]
+18:34:03,005 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.streambridge] to DEBUG
+18:34:03,005 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@1253e7cb - End of configuration.
+18:34:03,005 |-INFO in ch.qos.logback.classic.joran.JoranConfigurator@2d36e77e - Registering current configuration as safe fallback point
+18:34:03,005 |-INFO in ch.qos.logback.classic.util.ContextInitializer@7966baa7 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 101 milliseconds. ExecutionStatus=DO_NOT_INVOKE_NEXT_IF_ANY
+
+18:34:03.230 | WARN  | c.s.i.parser.EventParser       | Failed to parse event line, skipping. Line: '{not valid json' Error: Unexpected character ('n' (code 110)): was expecting double-quote to start field name
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]
+18:34:03.231 | WARN  | c.s.i.parser.EventParser       | Failed to parse event line, skipping. Line: 'just a string' Error: Unrecognized token 'just': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 5]
+18:34:03.239 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e1 type=user.created
+18:34:03.239 | WARN  | c.s.i.parser.EventParser       | Failed to parse event line, skipping. Line: '{ bad json }' Error: Unexpected character ('b' (code 98)): was expecting double-quote to start field name
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 3]
+18:34:03.239 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e2 type=order.placed
+18:34:03.250 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=e3 type=user.created
+18:34:03.257 | DEBUG | c.s.i.parser.EventParser       | Parsed event id=test-1 type=user.created
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,81 @@
+// transform.proto — the schema definition for the TransformService.
+//
+// WHAT IS A .proto FILE?
+// ──────────────────────
+// Think of it as a strongly-typed contract between services, similar to:
+//   - Python: Pydantic models + FastAPI route signatures combined
+//   - OpenAPI/Swagger spec for REST, but for binary RPC
+//
+// From this single file, protoc generates:
+//   1. TransformRequest.java  — immutable message class with builder
+//   2. TransformResponse.java — immutable message class with builder
+//   3. TransformServiceGrpc.java — stubs for client AND server
+//
+// You NEVER write those files by hand. Running `generateProto` produces them.
+// The equivalent in Python would be: dataclasses or Pydantic models you define
+// for your API, but here the tool generates them from the schema automatically.
+
+syntax = "proto3";
+
+// java_package: the Java package for all generated classes.
+// Separate from the proto package to keep proto namespace clean.
+option java_package = "com.streambridge.transform.proto";
+
+// java_outer_classname: name of the wrapper class if java_multiple_files = false.
+// We set it defensively to avoid name collisions with our own classes.
+option java_outer_classname = "TransformProto";
+
+// java_multiple_files = true: each message gets its own top-level .java file.
+// Without this, all messages would be nested inside TransformProto.java.
+// Always use true — it matches how you'd structure hand-written Java classes.
+option java_multiple_files = true;
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+//
+// WHY STRING FOR PAYLOAD (raw_json)?
+// We pass the payload as a serialized JSON string rather than using
+// google.protobuf.Struct (which maps to Map<String,Object>) to keep this
+// service self-contained and avoid the extra dependency. The service
+// deserializes, transforms, and re-serializes using Jackson.
+
+message TransformRequest {
+    string event_id  = 1;   // identifies which event we're transforming
+    string raw_json  = 2;   // the event's payload as a JSON string
+}
+
+message TransformResponse {
+    string event_id             = 1;   // echoed back for correlation
+    string transformed_json     = 2;   // cleaned payload as a JSON string
+    bool   success              = 3;   // false if transformation failed
+    string error_message        = 4;   // populated only when success = false
+    repeated string transformation_notes = 5; // one note per step applied
+    // 'repeated string' = List<String> in Java. Python equivalent: List[str].
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+//
+// UNARY vs SERVER-STREAMING RPC:
+//
+// Unary (Transform):         client sends 1 request, gets 1 response back.
+//                            Like a normal HTTP POST.
+//
+// Server-streaming (StreamTransform): client sends 1 request, server sends
+//                            MULTIPLE responses, one per transformation step.
+//                            Python equivalent: an async generator that yields
+//                            intermediate results as it works.
+//
+// WHY gRPC USES HTTP/2:
+// REST uses HTTP/1.1: one request per TCP connection, text headers.
+// gRPC uses HTTP/2: multiplexes many calls on one connection, binary headers,
+// built-in flow control. This makes server-streaming efficient — the server
+// can push responses without opening a new connection for each one.
+
+service TransformService {
+    // Unary: apply all 4 transformation steps, return the final result.
+    rpc Transform (TransformRequest) returns (TransformResponse);
+
+    // Server-streaming: stream one intermediate TransformResponse per step.
+    // The caller observes progress: step1 done → step2 done → step3 done → step4 done.
+    // Useful for audit logging and debugging transformation pipelines.
+    rpc StreamTransform (TransformRequest) returns (stream TransformResponse);
+}

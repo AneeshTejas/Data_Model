@@ -1,0 +1,15 @@
+# StreamBridge sample events — newline-delimited JSON (NDJSON)
+# Each line is one event. Lines starting with # are comments (stripped by EventParser).
+# This simulates events arriving from multiple connectors, like Hevo ingests them.
+
+{"id":"evt-001","type":"user.created","source":"salesforce","timestamp":"2024-06-01T10:00:00Z","payload":{"user_id":"u-123","email":"alice@example.com","plan":"pro","createdAt":"2024-06-01T10:00:00Z"}}
+{"id":"evt-002","type":"order.placed","source":"stripe","timestamp":"2024-06-01T10:01:00Z","payload":{"order_id":"ord-456","user_id":"u-123","amount":9900,"currency":"USD","status":"pending"}}
+{"id":"evt-003","type":"user.updated","source":"salesforce","timestamp":"2024-06-01T10:02:00Z","payload":{"user_id":"u-124","email":"bob@example.com","plan":"starter","updatedAt":"2024-06-01T10:02:00Z"}}
+{"id":"evt-004","type":"order.cancelled","source":"stripe","timestamp":"2024-06-01T10:03:00Z","payload":{"order_id":"ord-457","user_id":"u-124","status":"cancelled","reason":"customer_request"}}
+{"id":"evt-005","type":"system.health","source":"postgres","timestamp":"2024-06-01T10:04:00Z","payload":{"component":"db-replica","severity":"INFO","message":"Replication lag 2ms"}}
+{"id":"evt-006","type":"system.alert","source":"postgres","timestamp":"2024-06-01T10:05:00Z","payload":{"component":"api-gateway","severity":"ERROR","message":"High latency detected"}}
+{"id":"evt-007","type":"user.deleted","source":"hubspot","timestamp":"2024-06-01T10:06:00Z","payload":{"user_id":"u-125","reason":"gdpr_request","email":"charlie@example.com"}}
+{"id":"evt-008","type":"order.completed","source":"stripe","timestamp":"2024-06-01T10:07:00Z","payload":{"order_id":"ord-458","user_id":"u-123","amount":9900,"status":"completed"}}
+{"id":"evt-009","type":"unknown.webhook","source":"test","timestamp":"2024-06-01T10:08:00Z","payload":{"raw_data":"some_value","mystery_field":42}}
+{"id":"evt-010","type":"user.created","source":"unknown_source","timestamp":"2024-06-01T10:09:00Z","payload":{"user_id":"u-126"}}
+{"id":"evt-011","type":"order.placed","source":"stripe","timestamp":"2024-06-01T10:10:00Z","payload":{"order_id":"ord-459","userId":"u-127","amount":4900,"status":"pending","credit_card":"4111111111111111"}}
